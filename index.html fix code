@@ -1,0 +1,86 @@
+<script>
+    // URL de tu CSV (Raw)
+    const csvUrl = 'https://raw.githubusercontent.com/Rudepotatoes/Rudepotatoes/main/Rude%20Potatoes_%20The%20Ultimate%20List%20-%20Hoja%201.csv';
+    let allData = [];
+    let map;
+    let markers = [];
+
+    const potatoIcon = L.icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/1046/1046786.png',
+        iconSize: [30, 30],
+        iconAnchor: [15, 30],
+        popupAnchor: [0, -30]
+    });
+
+    // 1. Inicializar Mapa
+    map = L.map('map').setView([41.387, 2.170], 13);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+    // 2. Cargar y Procesar con "Limpieza Agresiva"
+    Papa.parse(csvUrl, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+            console.log("Columnas detectadas:", Object.keys(results.data[0])); // Para debug en consola
+
+            allData = results.data.map(row => {
+                // Buscamos la columna de Latitud/Longitud aunque tenga espacios o mayúsculas
+                let rawLat = row['Latitude'] || row['latitude'] || row[' Latitud'] || "";
+                let rawLng = row['Longitude'] || row['longitude'] || row[' Longitud'] || "";
+                let rawScore = row['Score'] || row['score'] || "0";
+
+                const lat = parseFloat(String(rawLat).replace(',', '.').trim());
+                const lng = parseFloat(String(rawLng).replace(',', '.').trim());
+                const score = parseFloat(String(rawScore).replace(',', '.').trim());
+
+                return { ...row, Latitude: lat, Longitude: lng, Score: score };
+            }).filter(row => !isNaN(row.Latitude) && !isNaN(row.Longitude) && row.Name);
+
+            // Ordenar por nota
+            allData.sort((a, b) => b.Score - a.Score);
+            renderContent(allData);
+        }
+    });
+
+    function renderContent(data) {
+        const container = document.getElementById('potato-grid');
+        container.innerHTML = '';
+        markers.forEach(m => map.removeLayer(m));
+        markers = [];
+
+        data.forEach(row => {
+            // Card
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <span class="score">${row.Score}</span>
+                <span class="name">${row.Name || 'Sin nombre'}</span>
+                <span class="address">📍 ${row.Address || 'BCN'}</span>
+                <a href="${row.Instagram}" target="_blank" class="btn-insta">Instagram</a>
+            `;
+            container.appendChild(card);
+
+            // Marcador
+            const marker = L.marker([row.Latitude, row.Longitude], { icon: potatoIcon })
+                .addTo(map)
+                .bindPopup(`<b>${row.Name}</b><br>Nota: ${row.Score}`);
+            markers.push(marker);
+        });
+
+        // Si hay puntos, ajustar el mapa para que se vean todos
+        if (markers.length > 0) {
+            const group = new L.featureGroup(markers);
+            map.fitBounds(group.getBounds().pad(0.1));
+        }
+    }
+
+    function filterCards() {
+        const term = document.getElementById('searchBox').value.toLowerCase();
+        const filtered = allData.filter(row => 
+            (row.Name && row.Name.toLowerCase().includes(term)) || 
+            (row.Address && row.Address.toLowerCase().includes(term))
+        );
+        renderContent(filtered);
+    }
+</script>
