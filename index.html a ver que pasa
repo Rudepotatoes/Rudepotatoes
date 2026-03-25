@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Rude Potatoes | Debug Mode</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        body { background: #121212; color: #ffcc00; font-family: sans-serif; padding: 50px; text-align: center; }
+        .debug-box { background: #222; padding: 20px; border: 2px solid #ffcc00; display: inline-block; text-align: left; }
+        .card { background: white; color: black; margin: 10px; padding: 10px; border-radius: 5px; display: inline-block; }
+    </style>
+</head>
+<body>
+
+    <h1>🍟 Rude Potatoes Debugger</h1>
+    <div id="status">Estado: Intentando conectar con el CSV...</div>
+    <hr>
+    <div id="potato-grid"></div>
+
+    <script>
+        // Esta es la URL de tu archivo en GitHub
+        const csvUrl = 'https://raw.githubusercontent.com/Rudepotatoes/Rudepotatoes/main/Rude%20Potatoes_%20The%20Ultimate%20List%20-%20Hoja%201.csv';
+
+        console.log("Iniciando carga desde:", csvUrl);
+
+        Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            error: function(err) {
+                document.getElementById('status').innerHTML = "❌ ERROR DE CONEXIÓN: No se puede leer el archivo. " + err;
+                console.error(err);
+            },
+            complete: function(results) {
+                const status = document.getElementById('status');
+                const grid = document.getElementById('potato-grid');
+                
+                if (results.data.length > 0) {
+                    const columnas = Object.keys(results.data[0]);
+                    status.innerHTML = "✅ ¡CONECTADO! <br>Columnas detectadas: " + columnas.join(", ");
+                    
+                    results.data.forEach(row => {
+                        if (row['Bar'] || row['Name']) {
+                            const card = document.createElement('div');
+                            card.className = 'card';
+                            card.innerHTML = "<b>Local:</b> " + (row['Bar'] || row['Name']);
+                            grid.appendChild(card);
+                        }
+                    });
+                } else {
+                    status.innerHTML = "⚠️ ARCHIVO VACÍO: Se conectó pero no hay datos.";
+                }
+            }
+        });
+    </script>
+</body>
+</html>
